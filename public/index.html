@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>아이디어 묘지</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    .card { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 8px; position: relative; }
+    .delete-btn { position: absolute; top: 10px; right: 10px; cursor: pointer; color: red; }
+    #userListModal { display: none; position: fixed; top: 10%; left: 50%; transform: translateX(-50%); background: white; border: 1px solid #ccc; padding: 20px; z-index: 1000; max-height: 70vh; overflow-y: auto; }
+    #ideaPage { display: none; }
+  </style>
+</head>
+<body>
+  <h1>🪦 버려진 아이디어 모음</h1>
+
+  <!-- 로그인/회원가입 -->
+  <div id="authSection">
+    <form id="loginForm">
+      <input type="text" id="username" placeholder="아이디" required>
+      <input type="password" id="password" placeholder="비밀번호" required>
+      <button type="submit">로그인</button>
+    </form>
+    <button id="logoutBtn" style="display:none;">로그아웃</button>
+    <div id="welcomeMsg"></div>
+    <button id="toggleRegisterBtn">회원가입</button>
+    <div id="registerSection" style="display:none;">
+      <h3>회원가입</h3>
+      <form id="registerForm">
+        <input type="text" id="reg_username" placeholder="아이디" required>
+        <input type="password" id="reg_password" placeholder="비밀번호" required>
+        <button type="submit">회원가입</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 관리자 컨트롤 -->
+  <div id="adminControls" style="display:none; margin: 10px 0;">
+    <button onclick="showUserList()">사용자 목록 보기</button>
+  </div>
+
+  <div id="userListModal">
+    <h3>사용자 목록</h3>
+    <ul id="userList"></ul>
+    <button onclick="closeUserList()">X 닫기</button>
+  </div>
+
+  <!-- 아이디어 입력 -->
+  <div id="inputSection" style="display:none;">
+    <input type="text" id="title" placeholder="제목" maxlength="100"><br><br>
+    <textarea id="description" placeholder="내용 (왜 버렸는지, 언제 등)" maxlength="500"></textarea><br><br>
+    <button id="saveBtn">저장하기</button>
+  </div>
+
+  <div id="viewIdeasBtnContainer" style="display:none; margin-top: 10px;">
+    <button onclick="showIdeaPage()">📂 저장된 아이디어 보기</button>
+  </div>
+
+  <!-- 아이디어 목록 -->
+  <div id="ideaPage" style="display:none;">
+    <h2>📝 저장된 아이디어들</h2>
+    <div id="ideaList"></div>
+    <button onclick="hideIdeaPage()">⬅ 돌아가기</button>
+  </div>
+
+  <script>
+    const API_BASE = window.location.origin;
+    let isAdmin = false;
+    let isSuperAdmin = false;
+
+    document.getElementById('toggleRegisterBtn').addEventListener('click', () => {
+      const regSection = document.getElementById('registerSection');
+      regSection.style.display = regSection.style.display === 'none' ? 'block' : 'none';
+    });
+
+    document.getElementById('loginForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const username = usernameInput.value;
+      const password = passwordInput.value;
+      try {
+        const res = await fetch(`${API_BASE}/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ username, password })
+        });
+        if (!res.ok) throw new Error('로그인 실패');
+        await fetchMe();
+      } catch (err) {
+        alert(err.message);
+      }
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await fetch(`${API_BASE}/logout`, { method: 'POST', credentials: 'include' });
+      location.reload();
+    });
+
+    document.getElementById('registerForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const username = reg_username.value;
+      const password = reg_password.value;
+      try {
+        const res = await fetch(`${API_BASE}/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || '회원가입 실패');
+        alert('회원가입 성공! 이제 로그인하세요.');
+        document.getElementById('registerSection').style.display = 'none';
+      } catch (err) {
+        alert(err.message);
+      }
+    });
+
+    document.getElementById('saveBtn').addEventListener('click', async () => {
+      const title = titleInput.value.trim();
+      const description = descriptionInput.value.trim();
+      if (!title) return alert('제목을 입력하세요.');
+      try {
+        await fetch(`${API_BASE}/ideas`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ title, description })
+        });
+        titleInput.value = '';
+        descriptionInput.value = '';
+        loadIdeas(); // 자동 갱신
+      } catch (err) {
+        console.error(err);
+      }
+    });
+
+    async function fetchMe() {
+      try {
+        const res = await fetch(`${API_BASE}/me`, { credentials: 'include' });
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        welcomeMsg.textContent = `${data.username}님 환영합니다.`;
+        loginForm.style.display = 'none';
+        logoutBtn.style.display = 'inline';
+        inputSection.style.display = 'block';
+        viewIdeasBtnContainer.style.display = 'block';
+        document.getElementById('registerSection').style.display = 'none';
+
+        isAdmin = data.role === 'admin' || data.role === 'superadmin';
+        isSuperAdmin = data.role === 'superadmin';
+        if (isAdmin) adminControls.style.display = 'block';
+      } catch (err) {
+        console.warn('사용자 정보 불러오기 실패', err);
+      }
+    }
+
+    function showIdeaPage() {
+      ideaPage.style.display = 'block';
+      inputSection.style.display = 'none';
+      viewIdeasBtnContainer.style.display = 'none';
+      loadIdeas();
+    }
+
+    function hideIdeaPage() {
+      ideaPage.style.display = 'none';
+      inputSection.style.display = 'block';
+      viewIdeasBtnContainer.style.display = 'block';
+    }
+
+    async function loadIdeas() {
+      try {
+        const res = await fetch(`${API_BASE}/ideas`, { credentials: 'include' });
+        const ideas = await res.json();
+        const list = ideaList;
+        list.innerHTML = '';
+        ideas.reverse().forEach(idea => {
+          const card = document.createElement('div');
+          card.className = 'card';
+
+          const title = document.createElement('strong');
+          title.textContent = idea.title;
+
+          const date = document.createElement('small');
+          date.textContent = new Date(idea.date).toLocaleString();
+
+          const desc = document.createElement('p');
+          desc.textContent = idea.description;
+
+          card.appendChild(title);
+          card.appendChild(document.createElement('br'));
+          card.appendChild(date);
+          card.appendChild(document.createElement('br'));
+          card.appendChild(desc);
+
+          if (isAdmin) {
+            const delBtn = document.createElement('span');
+            delBtn.className = 'delete-btn';
+            delBtn.textContent = '🗑️';
+            delBtn.onclick = () => deleteIdea(idea.id);
+            card.appendChild(delBtn);
+          }
+          list.appendChild(card);
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function deleteIdea(id) {
+      if (!confirm('정말 삭제하시겠습니까?')) return;
+      await fetch(`${API_BASE}/ideas/${id}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      loadIdeas();
+    }
+
+    async function showUserList() {
+      const res = await fetch(`${API_BASE}/users`, { credentials: 'include' });
+      const users = await res.json();
+      const list = userList;
+      list.innerHTML = '';
+      users.forEach(user => {
+        const li = document.createElement('li');
+        li.textContent = `${user.username} (${user.role})`;
+
+        if (isSuperAdmin) {
+          const btn = document.createElement('button');
+          btn.textContent = '권한변경';
+          btn.onclick = () => changeUserRole(user.id);
+          li.appendChild(btn);
+        }
+
+        if (isAdmin) {
+          const del = document.createElement('button');
+          del.textContent = '삭제';
+          del.onclick = () => deleteUser(user.id);
+          li.appendChild(del);
+        }
+
+        list.appendChild(li);
+      });
+      userListModal.style.display = 'block';
+    }
+
+    function closeUserList() {
+      userListModal.style.display = 'none';
+    }
+
+    async function changeUserRole(id) {
+      await fetch(`${API_BASE}/users/${id}/role`, {
+        method: 'PUT',
+        credentials: 'include'
+      });
+      showUserList();
+    }
+
+    async function deleteUser(id) {
+      if (!confirm('삭제하시겠습니까?')) return;
+      await fetch(`${API_BASE}/users/${id}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      showUserList();
+    }
+    fetchMe();
+  </script>
+</body>
+</html>

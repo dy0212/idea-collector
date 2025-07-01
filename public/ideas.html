@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>저장된 아이디어 목록</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    .card { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 8px; }
+    .error { color: red; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>📝 저장된 아이디어들</h1>
+  <div id="ideaList"></div>
+  <button onclick="window.history.back()">⬅ 돌아가기</button>
+
+  <script>
+    const API_BASE = window.location.origin;
+
+    async function loadIdeas() {
+      const listEl = document.getElementById('ideaList');
+      listEl.innerHTML = '';
+
+      try {
+        const res = await fetch(`${API_BASE}/ideas`, { credentials: 'include' });
+        if (!res.ok) {
+          const msg = document.createElement('p');
+          msg.className = 'error';
+          msg.textContent = '⚠️ 로그인이 필요합니다.';
+          listEl.appendChild(msg);
+          return;
+        }
+
+        const ideas = await res.json();
+        ideas.reverse().forEach(idea => {
+          const card = document.createElement('div');
+          card.className = 'card';
+
+          const titleEl = document.createElement('strong');
+          titleEl.textContent = idea.title;
+
+          const dateEl = document.createElement('small');
+          dateEl.textContent = new Date(idea.date).toLocaleString();
+
+          const descEl = document.createElement('p');
+          descEl.textContent = idea.description;
+
+          card.appendChild(titleEl);
+          card.appendChild(document.createElement('br'));
+          card.appendChild(dateEl);
+          card.appendChild(document.createElement('br'));
+          card.appendChild(descEl);
+
+          listEl.appendChild(card);
+        });
+      } catch (err) {
+        console.error('불러오기 실패:', err);
+        const errorMsg = document.createElement('p');
+        errorMsg.className = 'error';
+        errorMsg.textContent = '데이터 불러오기 실패. 서버 상태를 확인하세요.';
+        listEl.appendChild(errorMsg);
+      }
+    }
+
+    loadIdeas();
+  </script>
+</body>
+</html>

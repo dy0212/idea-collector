@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: idea-collector
+    env: node
+    region: singapore  # or oregon, frankfurt 등 원하는 지역
+    buildCommand: 'npm install'
+    startCommand: 'npm start'
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: SESSION_SECRET
+        value: your-production-secret
+      - key: CLIENT_ORIGIN
+        value: https://your-frontend-url.com  # 예: https://idea-collector.onrender.com
+    plan: free
+    autoDeploy: true
