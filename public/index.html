@@ -4,14 +4,117 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>아이디어 묘지</title>
+
+  <!-- 새로운 스타일 삽입 -->
   <style>
-    body { font-family: sans-serif; padding: 20px; }
-    .card { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 8px; position: relative; }
-    .delete-btn { position: absolute; top: 10px; right: 10px; cursor: pointer; color: red; }
-    #userListModal { display: none; position: fixed; top: 10%; left: 50%; transform: translateX(-50%); background: white; border: 1px solid #ccc; padding: 20px; z-index: 1000; max-height: 70vh; overflow-y: auto; }
-    #ideaPage { display: none; }
+    @import url('https://fonts.googleapis.com/css2?family=Nanum+Gothic&display=swap');
+
+    body {
+      font-family: 'Nanum Gothic', sans-serif;
+      background: linear-gradient(to right, #f6f9fc, #e0eafc);
+      color: #333;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 30px;
+      text-align: center;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 30px;
+      gap: 15px;
+    }
+
+    header img {
+      height: 60px;
+    }
+
+    h1 {
+      font-size: 2.2rem;
+      font-weight: bold;
+      margin: 0;
+    }
+
+    .card {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 15px;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+      transition: transform 0.15s ease-in-out;
+      position: relative;
+      text-align: left;
+    }
+
+    .card:hover {
+      transform: scale(1.01);
+    }
+
+    .delete-btn {
+      position: absolute;
+      top: 12px;
+      right: 15px;
+      cursor: pointer;
+      font-size: 1.2em;
+      color: #e74c3c;
+    }
+
+    input, textarea, button {
+      font-family: inherit;
+      font-size: 1rem;
+      padding: 10px 12px;
+      margin: 8px 0;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    button {
+      background-color: #4e73df;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+
+    button:hover {
+      background-color: #375ac2;
+    }
+
+    #loginForm, #registerForm {
+      background: #fff;
+      padding: 25px;
+      border-radius: 10px;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.1);
+      margin-bottom: 30px;
+      text-align: left;
+    }
+
+    #userListModal {
+      display: none;
+      position: fixed;
+      top: 10%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: white;
+      border: 1px solid #ccc;
+      padding: 20px;
+      z-index: 1000;
+      max-height: 70vh;
+      overflow-y: auto;
+      border-radius: 12px;
+    }
+
+    #userListModal button {
+      margin-left: 10px;
+    }
   </style>
 </head>
+
 <body>
   <h1>🪦 버려진 아이디어 모음</h1>
 
@@ -45,7 +148,7 @@
     <ul id="userList"></ul>
     <button onclick="closeUserList()">X 닫기</button>
   </div>
-
+  
   <!-- 아이디어 입력 -->
   <div id="inputSection" style="display:none;">
     <input type="text" id="title" placeholder="제목" maxlength="100"><br><br>
