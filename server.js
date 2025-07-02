@@ -34,6 +34,12 @@ const transporter = nodemailer.createTransport({
   }
 });
 
+function authenticate(req, res, next) {
+  if (!req.session.user) return res.status(401).json({ error: '인증 필요' });
+  req.user = req.session.user;
+  next();
+}
+
 db.serialize(() => {
   db.run(`CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -58,6 +64,16 @@ db.serialize(() => {
     email TEXT,
     code TEXT,
     createdAt TEXT
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS comments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    idea_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (idea_id) REFERENCES ideas(id),
+    FOREIGN KEY (user_id) REFERENCES users(id)
   )`);
 
   db.get(`SELECT * FROM users WHERE username = 'siasia212'`, (err, row) => {
@@ -244,6 +260,37 @@ app.delete('/ideas/:id', (req, res) => {
     if (err) return res.status(500).json({ error: '삭제 실패' });
     res.json({ success: true });
   });
+});
+// 댓글 생성
+app.post('/ideas/:ideaId/comments', authenticate, (req, res) => {
+  const { ideaId } = req.params;
+  const { content } = req.body;
+  if (!content) return res.status(400).json({ error: '내용이 비어 있습니다.' });
+
+  db.run(
+    'INSERT INTO comments (idea_id, user_id, content) VALUES (?, ?, ?)',
+    [ideaId, req.user.id, content],
+    function (err) {
+      if (err) return res.status(500).json({ error: '댓글 저장 실패' });
+      res.json({ success: true });
+    }
+  );
+});
+
+// 댓글 조회
+app.get('/ideas/:ideaId/comments', authenticate, (req, res) => {
+  const { ideaId } = req.params;
+  db.all(
+    `SELECT comments.*, users.username as nickname FROM comments
+     JOIN users ON comments.user_id = users.id
+     WHERE idea_id = ?
+     ORDER BY created_at DESC`,
+    [ideaId],
+    (err, rows) => {
+      if (err) return res.status(500).json({ error: '댓글 조회 실패' });
+      res.json(rows);
+    }
+  );
 });
 
 const PORT = process.env.PORT || 3000;

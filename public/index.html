@@ -336,6 +336,43 @@
     inputSection.style.display = 'block';
     viewIdeasBtnContainer.style.display = 'block';
   }
+  async function loadComments(ideaId) {
+  try {
+    const res = await fetch(`${API_BASE}/ideas/${ideaId}/comments`, { credentials: 'include' });
+    if (!res.ok) throw new Error('댓글 불러오기 실패');
+    const comments = await res.json();
+    const container = document.getElementById(`comments-${ideaId}`);
+    container.innerHTML = '<hr><strong>💬 댓글</strong><br>';
+    comments.forEach(c => {
+      const div = document.createElement('div');
+      div.innerHTML = `<strong>${c.nickname}</strong>: ${c.content} <small>(${new Date(c.created_at).toLocaleString()})</small>`;
+      container.appendChild(div);
+    });
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function submitComment(ideaId) {
+  const textarea = document.getElementById(`commentInput-${ideaId}`);
+  const content = textarea.value.trim();
+  if (!content) return alert('댓글을 입력하세요.');
+
+  try {
+    const res = await fetch(`${API_BASE}/ideas/${ideaId}/comments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ content })
+    });
+    if (!res.ok) throw new Error('댓글 등록 실패');
+    textarea.value = '';
+    loadComments(ideaId);
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
 
   async function loadIdeas() {
     try {
@@ -349,6 +386,11 @@
                           <small>${new Date(idea.date).toLocaleString()}</small><br>
                           <div>${idea.description}</div>
                           <small>작성자: ${idea.user?.username || '알 수 없음'}</small>`;
+        card.innerHTML += `
+  <div class="comments" id="comments-${idea.id}"></div>
+  <textarea id="commentInput-${idea.id}" placeholder="댓글을 입력하세요..."></textarea>
+  <button onclick="submitComment(${idea.id})">댓글 등록</button>
+`;
         if (isAdmin) {
           const delBtn = document.createElement('span');
           delBtn.className = 'delete-btn';
@@ -357,6 +399,8 @@
           card.appendChild(delBtn);
         }
         ideaList.appendChild(card);
+        loadComments(idea.id);
+
       });
     } catch (err) {
       console.error(err);
