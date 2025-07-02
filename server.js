@@ -64,12 +64,12 @@ db.serialize(() => {
     createdAt TEXT
   )`);
 
-  db.get(`SELECT * FROM users WHERE username = 'siasia212@gmail.com'`, (err, row) => {
+  db.get(`SELECT * FROM users WHERE username = 'siasia212'`, (err, row) => {
     if (!row) {
       bcrypt.hash('ehdduf0625!@#', 10, (err, hash) => {
         db.run(`INSERT INTO users (username, passwordHash, email, verified, role)
                 VALUES (?, ?, ?, 1, 'superadmin')`,
-                ['siasia212@gmail.com', hash, 'siasia212@gmail.com']);
+                ['siasia212', hash, 'dan877055@gmail.com']);
       });
     }
   });
