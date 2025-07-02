@@ -56,10 +56,10 @@ db.serialize(() => {
   db.run(`CREATE TABLE IF NOT EXISTS verifications (
     id TEXT PRIMARY KEY,
     email TEXT,
-    code TEXT
+    code TEXT,
+    createdAt TEXT
   )`);
 
-  // ✅ 초기 superadmin 계정 (이메일 인증 제외)
   db.get(`SELECT * FROM users WHERE username = 'siasia212@gmail.com'`, (err, row) => {
     if (!row) {
       bcrypt.hash('ehdduf0625!@#', 10, (err, hash) => {
@@ -82,20 +82,23 @@ app.post('/register', async (req, res) => {
     if (row) return res.status(400).json({ error: '이미 존재하는 사용자입니다.' });
     const hash = await bcrypt.hash(password, 10);
     const code = uuidv4().slice(0, 6).toUpperCase();
-
-    // 이메일 인증코드 저장
     const id = uuidv4();
-    db.run(`INSERT INTO verifications (id, email, code) VALUES (?, ?, ?)`, [id, email, code]);
+    const createdAt = new Date().toISOString();
 
-    // 메일 전송
-    await transporter.sendMail({
-      from: process.env.MAIL_USER,
-      to: email,
-      subject: '[아이디어 묘지] 이메일 인증코드',
-      text: `인증코드는 다음과 같습니다: ${code}`
-    });
+    db.run(`INSERT INTO verifications (id, email, code, createdAt) VALUES (?, ?, ?, ?)`, [id, email, code, createdAt]);
 
-    res.json({ verifyId: id, message: '인증 메일이 전송되었습니다.' });
+    try {
+      await transporter.sendMail({
+        from: process.env.MAIL_USER,
+        to: email,
+        subject: '[아이디어 묘지] 이메일 인증코드',
+        text: `인증코드는 다음과 같습니다: ${code}`
+      });
+      res.json({ verifyId: id, message: '인증 메일이 전송되었습니다.' });
+    } catch (err) {
+      console.error('메일 전송 실패:', err);
+      res.status(500).json({ error: '이메일 전송 실패' });
+    }
   });
 });
 
@@ -106,11 +109,17 @@ app.post('/verify', async (req, res) => {
   db.get(`SELECT * FROM verifications WHERE id = ? AND code = ?`, [verifyId, code], async (err, row) => {
     if (!row) return res.status(400).json({ error: '인증 실패' });
 
+    const createdTime = new Date(row.createdAt).getTime();
+    const now = Date.now();
+    if (now - createdTime > 180000) { // 3분 초과
+      db.run(`DELETE FROM verifications WHERE id = ?`, [verifyId]);
+      return res.status(400).json({ error: '인증코드가 만료되었습니다. 다시 시도해주세요.' });
+    }
+
     const hash = await bcrypt.hash(password, 10);
     db.run(`INSERT INTO users (username, passwordHash, email, verified)
             VALUES (?, ?, ?, 1)`, [username, hash, username], function(err) {
       if (err) return res.status(500).json({ error: '계정 생성 실패' });
-
       db.run(`DELETE FROM verifications WHERE id = ?`, [verifyId]);
       res.json({ success: true });
     });
@@ -185,7 +194,7 @@ app.delete('/users/:id', (req, res) => {
   });
 });
 
-// ✅ 아이디어 목록 조회 (작성자 포함)
+// ✅ 아이디어 목록 조회
 app.get('/ideas', (req, res) => {
   if (!req.session.user) return res.status(401).json({ error: '로그인이 필요합니다.' });
   db.all(`
@@ -195,7 +204,6 @@ app.get('/ideas', (req, res) => {
   `, [], (err, rows) => {
     if (err) return res.status(500).json({ error: 'DB 조회 실패' });
 
-    // 프론트가 기대하는 구조로 변환
     const ideas = rows.map(idea => ({
       id: idea.id,
       title: idea.title,
