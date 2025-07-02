@@ -118,8 +118,8 @@
     });
 
     document.getElementById('saveBtn').addEventListener('click', async () => {
-      const title = titleInput.value.trim();
-      const description = descriptionInput.value.trim();
+      const title = document.getElementById('title').value.trim();
+      const description = document.getElementById('description').value.trim();
       if (!title) return alert('제목을 입력하세요.');
       try {
         await fetch(`${API_BASE}/ideas`, {
