@@ -222,52 +222,55 @@
       });
 
       document.getElementById('registerForm').addEventListener('submit', async e => {
-        e.preventDefault();
-        const username = document.getElementById('reg_username').value;
-        const password = document.getElementById('reg_password').value;
-        const agree = document.getElementById('reg_agree').checked;
+  e.preventDefault();
+  const username = document.getElementById('reg_username').value;
+  const password = document.getElementById('reg_password')?.value || '';
+  const agree = document.getElementById('reg_agree').checked;
 
-        try {
-          const res = await fetch(`${API_BASE}/register`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ username, password, agree })
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || '회원가입 실패');
+  try {
+    const res = await fetch(`${API_BASE}/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ username, password, agree })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || '회원가입 실패');
 
-          tempRegister = { verifyId: data.verifyId, username, password };
-          registerSection.style.display = 'none';
-          verificationSection.style.display = 'block';
-          alert('이메일로 인증코드를 보냈습니다.');
-        } catch (err) {
-          alert(err.message);
-        }
-      });
+    tempRegister = { verifyId: data.verifyId, username, password };
+    registerSection.style.display = 'none';
+    verificationSection.style.display = 'block';
+    loginForm.style.display = 'none';  // ✅ 로그인 폼 숨기기
+    alert('이메일로 인증코드를 보냈습니다.');
+  } catch (err) {
+    alert(err.message);
+  }
+});
 
       document.getElementById('verifyBtn').addEventListener('click', async () => {
-        const code = verify_code.value;
-        try {
-          const res = await fetch(`${API_BASE}/verify`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({
-              verifyId: tempRegister.verifyId,
-              code,
-              username: tempRegister.username,
-              password: tempRegister.password
-            })
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || '인증 실패');
-          alert('이메일 인증 완료! 로그인 해주세요.');
-          location.reload();
-        } catch (err) {
-          alert(err.message);
-        }
-      });
+  const code = verify_code.value;
+  try {
+    const res = await fetch(`${API_BASE}/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        verifyId: tempRegister.verifyId,
+        code,
+        username: tempRegister.username,
+        password: tempRegister.password
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || '인증 실패');
+
+    verificationSection.style.display = 'none';
+    finalRegisterSection.style.display = 'block';
+    loginForm.style.display = 'none';  // ✅ 로그인 폼 숨기기
+  } catch (err) {
+    alert(err.message);
+  }
+});
 
       document.getElementById('saveBtn').addEventListener('click', async () => {
         const titleInput = document.getElementById('title');
