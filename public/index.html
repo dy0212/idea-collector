@@ -225,7 +225,7 @@
     const username = document.getElementById('reg_username').value;
     const password = 'temp'; // 임시 비밀번호 (실제 비밀번호는 마지막 단계에서 입력)
     const agree = document.getElementById('reg_agree').checked;
-    if (!username.endsWith('@gmail.com')) return alert('Gmail 주소만 입력 가능합니다.');
+    if (!username.includes('@')) return alert('올바른 이메일 주소를 입력하세요.');
     try {
       const res = await fetch(`${API_BASE}/register`, {
         method: 'POST',
