@@ -76,8 +76,9 @@
 
     document.getElementById('loginForm').addEventListener('submit', async e => {
       e.preventDefault();
-      const username = usernameInput.value;
-      const password = passwordInput.value;
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+
       try {
         const res = await fetch(`${API_BASE}/login`, {
           method: 'POST',
@@ -99,8 +100,8 @@
 
     document.getElementById('registerForm').addEventListener('submit', async e => {
       e.preventDefault();
-      const username = reg_username.value;
-      const password = reg_password.value;
+      const username = document.getElementById('reg_username').value;
+      const password = document.getElementById('reg_password').value;
       try {
         const res = await fetch(`${API_BASE}/register`, {
           method: 'POST',
