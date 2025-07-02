@@ -111,6 +111,15 @@
     #userListModal button {
       margin-left: 10px;
     }
+
+    #explanationText {
+      background: #fff;
+      padding: 15px;
+      text-align: left;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
   </style>
 </head>
 <body>
@@ -143,6 +152,18 @@
     <h3>사용자 목록</h3>
     <ul id="userList"></ul>
     <button onclick="closeUserList()">X 닫기</button>
+  </div>
+
+  <div id="explanationContainer" style="display:none; margin-bottom: 20px;">
+    <button onclick="toggleExplanation()">🧐 설명 보기</button>
+    <div id="explanationText" style="display:none;">
+      <p><strong>이 웹사이트는?</strong><br>
+      떠오른 아이디어를 저장했다가, 나중에 보면 "왜 이걸 썼지?" 싶은 아이디어들을 모아두는 <em>아이디어의 묘지</em>입니다.</p>
+      <p><strong>사용법</strong><br>
+      - 로그인 후 아이디어를 저장<br>
+      - 저장된 아이디어는 '저장된 아이디어 보기' 버튼으로 확인<br>
+      - 관리자(superadmin)는 사용자 관리도 가능</p>
+    </div>
   </div>
 
   <div id="inputSection" style="display:none;">
@@ -238,6 +259,11 @@
       }
     });
 
+    function toggleExplanation() {
+      const text = document.getElementById('explanationText');
+      text.style.display = text.style.display === 'none' ? 'block' : 'none';
+    }
+
     async function fetchMe() {
       try {
         const res = await fetch(`${API_BASE}/me`, { credentials: 'include' });
@@ -251,6 +277,7 @@
         viewIdeasBtnContainer.style.display = 'block';
         document.getElementById('registerSection').style.display = 'none';
         document.getElementById('toggleRegisterBtn').style.display = 'none';
+        document.getElementById('explanationContainer').style.display = 'block';
 
         isAdmin = data.role === 'admin' || data.role === 'superadmin';
         isSuperAdmin = data.role === 'superadmin';
