@@ -373,6 +373,38 @@
   }
 
   fetchMe(); // 자동 로그인 시도
+  function showUserList() {
+    const modal = document.getElementById('userListModal');
+    modal.style.display = 'block';
+
+    // 사용자 목록 불러오기 (관리자만 가능)
+    fetch(`${API_BASE}/users`, { credentials: 'include' })
+      .then(res => res.json())
+      .then(users => {
+        const list = document.getElementById('userList');
+        list.innerHTML = '';
+        users.forEach(user => {
+          const li = document.createElement('li');
+          li.textContent = `${user.username} (${user.nickname}) - ${user.role}`;
+          list.appendChild(li);
+        });
+      })
+      .catch(err => {
+        console.error('사용자 목록 불러오기 실패', err);
+        alert('사용자 목록을 불러오지 못했습니다.');
+      });
+  }
+
+  // 사용자 목록 닫기
+  function closeUserList() {
+    document.getElementById('userListModal').style.display = 'none';
+  }
+
+  // 설명 보기 토글 기능
+  function toggleExplanation() {
+    const text = document.getElementById('explanationText');
+    text.style.display = text.style.display === 'none' ? 'block' : 'none';
+  }
 </script>
 
   </body>
