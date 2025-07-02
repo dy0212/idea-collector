@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>아이디어 묘지</title>
 
-  <!-- 새로운 스타일 삽입 -->
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Nanum+Gothic&display=swap');
 
@@ -114,11 +113,9 @@
     }
   </style>
 </head>
-
 <body>
   <h1>🪦 버려진 아이디어 모음</h1>
 
-  <!-- 로그인/회원가입 -->
   <div id="authSection">
     <form id="loginForm">
       <input type="text" id="username" placeholder="아이디" required>
@@ -138,7 +135,6 @@
     </div>
   </div>
 
-  <!-- 관리자 컨트롤 -->
   <div id="adminControls" style="display:none; margin: 10px 0;">
     <button onclick="showUserList()">사용자 목록 보기</button>
   </div>
@@ -148,8 +144,7 @@
     <ul id="userList"></ul>
     <button onclick="closeUserList()">X 닫기</button>
   </div>
-  
-  <!-- 아이디어 입력 -->
+
   <div id="inputSection" style="display:none;">
     <input type="text" id="title" placeholder="제목" maxlength="100"><br><br>
     <textarea id="description" placeholder="내용 (왜 버렸는지, 언제 등)" maxlength="500"></textarea><br><br>
@@ -160,7 +155,6 @@
     <button onclick="showIdeaPage()">📂 저장된 아이디어 보기</button>
   </div>
 
-  <!-- 아이디어 목록 -->
   <div id="ideaPage" style="display:none;">
     <h2>📝 저장된 아이디어들</h2>
     <div id="ideaList"></div>
@@ -171,6 +165,7 @@
     const API_BASE = window.location.origin;
     let isAdmin = false;
     let isSuperAdmin = false;
+    let currentUserId = null;
 
     document.getElementById('toggleRegisterBtn').addEventListener('click', () => {
       const regSection = document.getElementById('registerSection');
@@ -222,33 +217,33 @@
     });
 
     document.getElementById('saveBtn').addEventListener('click', async () => {
-  const titleInput = document.getElementById('title');
-  const descriptionInput = document.getElementById('description');
-  const title = titleInput.value.trim();
-  const description = descriptionInput.value.trim();
+      const titleInput = document.getElementById('title');
+      const descriptionInput = document.getElementById('description');
+      const title = titleInput.value.trim();
+      const description = descriptionInput.value.trim();
 
-  if (!title) return alert('제목을 입력하세요.');
-  try {
-    await fetch(`${API_BASE}/ideas`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ title, description })
+      if (!title) return alert('제목을 입력하세요.');
+      try {
+        await fetch(`${API_BASE}/ideas`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ title, description })
+        });
+        titleInput.value = '';
+        descriptionInput.value = '';
+        loadIdeas();
+      } catch (err) {
+        console.error(err);
+      }
     });
-    titleInput.value = '';
-    descriptionInput.value = '';
-    loadIdeas(); // 자동 갱신
-  } catch (err) {
-    console.error(err);
-  }
-});
-
 
     async function fetchMe() {
       try {
         const res = await fetch(`${API_BASE}/me`, { credentials: 'include' });
         if (!res.ok) throw new Error();
         const data = await res.json();
+        currentUserId = data.id;
         welcomeMsg.textContent = `${data.username}님 환영합니다.`;
         loginForm.style.display = 'none';
         logoutBtn.style.display = 'inline';
@@ -287,22 +282,17 @@
         ideas.reverse().forEach(idea => {
           const card = document.createElement('div');
           card.className = 'card';
-
           const title = document.createElement('strong');
           title.textContent = idea.title;
-
           const date = document.createElement('small');
           date.textContent = new Date(idea.date).toLocaleString();
-
           const desc = document.createElement('p');
           desc.textContent = idea.description;
-
           card.appendChild(title);
           card.appendChild(document.createElement('br'));
           card.appendChild(date);
           card.appendChild(document.createElement('br'));
           card.appendChild(desc);
-
           if (isAdmin) {
             const delBtn = document.createElement('span');
             delBtn.className = 'delete-btn';
@@ -335,14 +325,14 @@
         const li = document.createElement('li');
         li.textContent = `${user.username} (${user.role})`;
 
-        if (isSuperAdmin) {
+        if (isSuperAdmin && user.id !== currentUserId) {
           const btn = document.createElement('button');
           btn.textContent = '권한변경';
           btn.onclick = () => changeUserRole(user.id);
           li.appendChild(btn);
         }
 
-        if (isAdmin) {
+        if (isAdmin && user.id !== currentUserId) {
           const del = document.createElement('button');
           del.textContent = '삭제';
           del.onclick = () => deleteUser(user.id);
@@ -374,6 +364,7 @@
       });
       showUserList();
     }
+
     fetchMe();
   </script>
 </body>
