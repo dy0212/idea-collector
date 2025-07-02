@@ -172,8 +172,9 @@
 
     document.getElementById('loginForm').addEventListener('submit', async e => {
       e.preventDefault();
-      const username = username.value;
-      const password = password.value;
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+
 
       try {
         const res = await fetch(`${API_BASE}/login`, {
@@ -196,9 +197,9 @@
 
     document.getElementById('registerForm').addEventListener('submit', async e => {
       e.preventDefault();
-      const username = reg_username.value;
-      const password = reg_password.value;
-      const agree = reg_agree.checked;
+      const username = document.getElementById('reg_username').value;
+      const password = document.getElementById('reg_password').value;
+      const agree = document.getElementById('reg_agree').checked;
 
       try {
         const res = await fetch(`${API_BASE}/register`, {
@@ -243,8 +244,10 @@
     });
 
     document.getElementById('saveBtn').addEventListener('click', async () => {
-      const title = title.value.trim();
-      const description = description.value.trim();
+      const titleInput = document.getElementById('title');
+      const descriptionInput = document.getElementById('description');
+      const title = titleInput.value.trim();
+      const description = descriptionInput.value.trim();
       if (!title) return alert('제목을 입력하세요.');
       try {
         await fetch(`${API_BASE}/ideas`, {
