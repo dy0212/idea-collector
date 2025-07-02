@@ -185,241 +185,195 @@
     </div>
 
     <script>
-      const API_BASE = window.location.origin;
-      let tempRegister = {};
-      let isAdmin = false;
-      let isSuperAdmin = false;
-      let currentUserId = null;
+  const API_BASE = window.location.origin;
+  let tempRegister = {};
+  let isAdmin = false;
+  let isSuperAdmin = false;
+  let currentUserId = null;
 
-      document.getElementById('toggleRegisterBtn').addEventListener('click', () => {
-        const regSection = document.getElementById('registerSection');
-        regSection.style.display = regSection.style.display === 'none' ? 'block' : 'none';
+  document.getElementById('toggleRegisterBtn').addEventListener('click', () => {
+    const regSection = document.getElementById('registerSection');
+    regSection.style.display = regSection.style.display === 'none' ? 'block' : 'none';
+    loginForm.style.display = 'none';  // 로그인 폼 숨김
+  });
+
+  document.getElementById('loginForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    try {
+      const res = await fetch(`${API_BASE}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ username, password })
       });
+      if (!res.ok) throw new Error('로그인 실패');
+      await fetchMe();
+    } catch (err) {
+      alert(err.message);
+    }
+  });
 
-      document.getElementById('loginForm').addEventListener('submit', async e => {
-        e.preventDefault();
-        const username = document.getElementById('username').value;
-        const password = document.getElementById('password').value;
+  document.getElementById('logoutBtn').addEventListener('click', async () => {
+    await fetch(`${API_BASE}/logout`, { method: 'POST', credentials: 'include' });
+    location.reload();
+  });
 
-
-        try {
-          const res = await fetch(`${API_BASE}/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ username, password })
-          });
-          if (!res.ok) throw new Error('로그인 실패');
-          await fetchMe();
-        } catch (err) {
-          alert(err.message);
-        }
+  document.getElementById('registerForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const username = document.getElementById('reg_username').value;
+    const password = 'temp'; // 임시 비밀번호 (실제 비밀번호는 마지막 단계에서 입력)
+    const agree = document.getElementById('reg_agree').checked;
+    if (!username.endsWith('@gmail.com')) return alert('Gmail 주소만 입력 가능합니다.');
+    try {
+      const res = await fetch(`${API_BASE}/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ username, password, agree })
       });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '회원가입 실패');
+      tempRegister = { verifyId: data.verifyId, username };  // 비밀번호는 마지막에 입력
+      registerSection.style.display = 'none';
+      verificationSection.style.display = 'block';
+      loginForm.style.display = 'none';
+      alert('이메일로 인증코드를 보냈습니다.');
+    } catch (err) {
+      alert(err.message);
+    }
+  });
 
-      document.getElementById('logoutBtn').addEventListener('click', async () => {
-        await fetch(`${API_BASE}/logout`, { method: 'POST', credentials: 'include' });
-        location.reload();
-      });
+  document.getElementById('verifyBtn').addEventListener('click', () => {
+    const code = document.getElementById('verify_code').value.trim();
+    if (!code) return alert('인증코드를 입력하세요.');
+    tempRegister.code = code;
+    verificationSection.style.display = 'none';
+    finalRegisterSection.style.display = 'block';
+    loginForm.style.display = 'none';
+  });
 
-      document.getElementById('registerForm').addEventListener('submit', async e => {
-  e.preventDefault();
-  const username = document.getElementById('reg_username').value;
-  const password = document.getElementById('reg_password')?.value || '';
-  const agree = document.getElementById('reg_agree').checked;
-
+  document.getElementById('finalRegisterBtn').addEventListener('click', async () => {
+  const nickname = document.getElementById('reg_nickname').value.trim();
+  const password = document.getElementById('reg_password').value;
+  if (!nickname || !password) return alert('닉네임과 비밀번호를 모두 입력하세요.');
   try {
-    const res = await fetch(`${API_BASE}/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ username, password, agree })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || '회원가입 실패');
-
-    tempRegister = { verifyId: data.verifyId, username, password };
-    registerSection.style.display = 'none';
-    verificationSection.style.display = 'block';
-    loginForm.style.display = 'none';  // ✅ 로그인 폼 숨기기
-    alert('이메일로 인증코드를 보냈습니다.');
-  } catch (err) {
-    alert(err.message);
-  }
-});
-
-      document.getElementById('verifyBtn').addEventListener('click', async () => {
-  const code = verify_code.value;
-  try {
-    const res = await fetch(`${API_BASE}/verify`, {
+    const res = await fetch(`${API_BASE}/complete-register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify({
         verifyId: tempRegister.verifyId,
-        code,
         username: tempRegister.username,
-        password: tempRegister.password
+        password,
+        nickname
       })
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || '인증 실패');
-
-    verificationSection.style.display = 'none';
-    finalRegisterSection.style.display = 'block';
-    loginForm.style.display = 'none';  // ✅ 로그인 폼 숨기기
+    if (!res.ok) throw new Error(data.error || '계정 생성 실패');
+    alert('계정 생성 완료! 로그인 해주세요.');
+    location.reload();
   } catch (err) {
     alert(err.message);
   }
 });
 
-      document.getElementById('saveBtn').addEventListener('click', async () => {
-        const titleInput = document.getElementById('title');
-        const descriptionInput = document.getElementById('description');
-        const title = titleInput.value.trim();
-        const description = descriptionInput.value.trim();
-        if (!title) return alert('제목을 입력하세요.');
-        try {
-          await fetch(`${API_BASE}/ideas`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ title, description })
-          });
-          title.value = '';
-          description.value = '';
-          loadIdeas();
-        } catch (err) {
-          console.error(err);
-        }
+
+  document.getElementById('saveBtn').addEventListener('click', async () => {
+    const titleInput = document.getElementById('title');
+    const descriptionInput = document.getElementById('description');
+    const title = titleInput.value.trim();
+    const description = descriptionInput.value.trim();
+    if (!title) return alert('제목을 입력하세요.');
+    try {
+      await fetch(`${API_BASE}/ideas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ title, description })
       });
+      title.value = '';
+      description.value = '';
+      loadIdeas();
+    } catch (err) {
+      console.error(err);
+    }
+  });
 
-      function toggleExplanation() {
-        const text = document.getElementById('explanationText');
-        text.style.display = text.style.display === 'none' ? 'block' : 'none';
-      }
+  async function fetchMe() {
+    try {
+      const res = await fetch(`${API_BASE}/me`, { credentials: 'include' });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      currentUserId = data.id;
+      welcomeMsg.textContent = `${data.username}님 환영합니다.`;
+      loginForm.style.display = 'none';
+      logoutBtn.style.display = 'inline';
+      inputSection.style.display = 'block';
+      viewIdeasBtnContainer.style.display = 'block';
+      registerSection.style.display = 'none';
+      toggleRegisterBtn.style.display = 'none';
+      explanationContainer.style.display = 'block';
 
-      async function fetchMe() {
-        try {
-          const res = await fetch(`${API_BASE}/me`, { credentials: 'include' });
-          if (!res.ok) throw new Error();
-          const data = await res.json();
-          currentUserId = data.id;
-          welcomeMsg.textContent = `${data.username}님 환영합니다.`;
-          loginForm.style.display = 'none';
-          logoutBtn.style.display = 'inline';
-          inputSection.style.display = 'block';
-          viewIdeasBtnContainer.style.display = 'block';
-          registerSection.style.display = 'none';
-          toggleRegisterBtn.style.display = 'none';
-          explanationContainer.style.display = 'block';
+      isAdmin = data.role === 'admin' || data.role === 'superadmin';
+      isSuperAdmin = data.role === 'superadmin';
+      if (isAdmin) adminControls.style.display = 'block';
+    } catch (err) {
+      console.warn('사용자 정보 불러오기 실패', err);
+    }
+  }
 
-          isAdmin = data.role === 'admin' || data.role === 'superadmin';
-          isSuperAdmin = data.role === 'superadmin';
-          if (isAdmin) adminControls.style.display = 'block';
-        } catch (err) {
-          console.warn('사용자 정보 불러오기 실패', err);
+  function showIdeaPage() {
+    ideaPage.style.display = 'block';
+    inputSection.style.display = 'none';
+    viewIdeasBtnContainer.style.display = 'none';
+    loadIdeas();
+  }
+
+  function hideIdeaPage() {
+    ideaPage.style.display = 'none';
+    inputSection.style.display = 'block';
+    viewIdeasBtnContainer.style.display = 'block';
+  }
+
+  async function loadIdeas() {
+    try {
+      const res = await fetch(`${API_BASE}/ideas`, { credentials: 'include' });
+      const ideas = await res.json();
+      ideaList.innerHTML = '';
+      ideas.reverse().forEach(idea => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `<strong>${idea.title}</strong><br>
+                          <small>${new Date(idea.date).toLocaleString()}</small><br>
+                          <div>${idea.description}</div>
+                          <small>작성자: ${idea.user?.username || '알 수 없음'}</small>`;
+        if (isAdmin) {
+          const delBtn = document.createElement('span');
+          delBtn.className = 'delete-btn';
+          delBtn.textContent = '🗑️';
+          delBtn.onclick = () => deleteIdea(idea.id);
+          card.appendChild(delBtn);
         }
-      }
+        ideaList.appendChild(card);
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  }
 
-      function showIdeaPage() {
-        ideaPage.style.display = 'block';
-        inputSection.style.display = 'none';
-        viewIdeasBtnContainer.style.display = 'none';
-        loadIdeas();
-      }
+  async function deleteIdea(id) {
+    if (!confirm('정말 삭제하시겠습니까?')) return;
+    await fetch(`${API_BASE}/ideas/${id}`, {
+      method: 'DELETE',
+      credentials: 'include'
+    });
+    loadIdeas();
+  }
 
-      function hideIdeaPage() {
-        ideaPage.style.display = 'none';
-        inputSection.style.display = 'block';
-        viewIdeasBtnContainer.style.display = 'block';
-      }
+  fetchMe(); // 자동 로그인 시도
+</script>
 
-      async function loadIdeas() {
-        try {
-          const res = await fetch(`${API_BASE}/ideas`, { credentials: 'include' });
-          const ideas = await res.json();
-          ideaList.innerHTML = '';
-          ideas.reverse().forEach(idea => {
-            const card = document.createElement('div');
-            card.className = 'card';
-            card.innerHTML = `<strong>${idea.title}</strong><br>
-                              <small>${new Date(idea.date).toLocaleString()}</small><br>
-                              <div>${idea.description}</div>
-                              <small>작성자: ${idea.user?.username || '알 수 없음'}</small>`;
-
-            if (isAdmin) {
-              const delBtn = document.createElement('span');
-              delBtn.className = 'delete-btn';
-              delBtn.textContent = '🗑️';
-              delBtn.onclick = () => deleteIdea(idea.id);
-              card.appendChild(delBtn);
-            }
-
-            ideaList.appendChild(card);
-          });
-        } catch (err) {
-          console.error(err);
-        }
-      }
-
-      async function deleteIdea(id) {
-        if (!confirm('정말 삭제하시겠습니까?')) return;
-        await fetch(`${API_BASE}/ideas/${id}`, {
-          method: 'DELETE',
-          credentials: 'include'
-        });
-        loadIdeas();
-      }
-
-      async function showUserList() {
-        const res = await fetch(`${API_BASE}/users`, { credentials: 'include' });
-        const users = await res.json();
-        userList.innerHTML = '';
-        users.forEach(user => {
-          const li = document.createElement('li');
-          li.textContent = `${user.username} (${user.role})`;
-
-          if (isSuperAdmin && user.id !== currentUserId) {
-            const btn = document.createElement('button');
-            btn.textContent = '권한변경';
-            btn.onclick = () => changeUserRole(user.id);
-            li.appendChild(btn);
-          }
-
-          if (isAdmin && user.id !== currentUserId) {
-            const del = document.createElement('button');
-            del.textContent = '삭제';
-            del.onclick = () => deleteUser(user.id);
-            li.appendChild(del);
-          }
-
-          userList.appendChild(li);
-        });
-        userListModal.style.display = 'block';
-      }
-
-      function closeUserList() {
-        userListModal.style.display = 'none';
-      }
-
-      async function changeUserRole(id) {
-        await fetch(`${API_BASE}/users/${id}/role`, {
-          method: 'PUT',
-          credentials: 'include'
-        });
-        showUserList();
-      }
-
-      async function deleteUser(id) {
-        if (!confirm('삭제하시겠습니까?')) return;
-        await fetch(`${API_BASE}/users/${id}`, {
-          method: 'DELETE',
-          credentials: 'include'
-        });
-        showUserList();
-      }
-
-      fetchMe(); // 자동 로그인 시도
-    </script>
   </body>
   </html>

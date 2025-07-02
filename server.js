@@ -7,14 +7,12 @@ const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const nodemailer = require('nodemailer');
 const { v4: uuidv4 } = require('uuid');
+const path = require('path');
 
 const app = express();
 const db = new sqlite3.Database('./db.sqlite');
-const path = require('path');
 
-// ✅ 정적 파일 서빙 설정
 app.use(express.static(path.join(__dirname, 'public')));
-
 app.use(cors({
   origin: process.env.CLIENT_ORIGIN || 'http://localhost:3000',
   credentials: true
@@ -28,7 +26,6 @@ app.use(session({
   cookie: { httpOnly: true }
 }));
 
-// ✅ 이메일 전송 설정 (gmail 기준)
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
@@ -37,7 +34,6 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-// ✅ DB 초기화
 db.serialize(() => {
   db.run(`CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -75,16 +71,14 @@ db.serialize(() => {
   });
 });
 
-// ✅ 회원가입 (개인정보 동의 + 이메일 인증)
 app.post('/register', async (req, res) => {
   const { username, password, agree } = req.body;
   const email = username;
-
   if (!agree) return res.status(400).json({ error: '개인정보 수집에 동의해야 합니다.' });
 
   db.get(`SELECT * FROM users WHERE username = ?`, [username], async (err, row) => {
     if (row) return res.status(400).json({ error: '이미 존재하는 사용자입니다.' });
-    const hash = await bcrypt.hash(password, 10);
+
     const code = uuidv4().slice(0, 6).toUpperCase();
     const id = uuidv4();
     const createdAt = new Date().toISOString();
@@ -106,31 +100,47 @@ app.post('/register', async (req, res) => {
   });
 });
 
-// ✅ 인증 코드 확인 후 회원 생성
 app.post('/verify', async (req, res) => {
-  const { verifyId, code, username, password } = req.body;
-
-  db.get(`SELECT * FROM verifications WHERE id = ? AND code = ?`, [verifyId, code], async (err, row) => {
+  const { verifyId, code } = req.body;
+  db.get(`SELECT * FROM verifications WHERE id = ? AND code = ?`, [verifyId, code], (err, row) => {
     if (!row) return res.status(400).json({ error: '인증 실패' });
 
     const createdTime = new Date(row.createdAt).getTime();
     const now = Date.now();
-    if (now - createdTime > 180000) { // 3분 초과
+    if (now - createdTime > 180000) {
       db.run(`DELETE FROM verifications WHERE id = ?`, [verifyId]);
       return res.status(400).json({ error: '인증코드가 만료되었습니다. 다시 시도해주세요.' });
     }
 
-    const hash = await bcrypt.hash(password, 10);
-    db.run(`INSERT INTO users (username, passwordHash, email, verified)
-            VALUES (?, ?, ?, 1)`, [username, hash, username], function(err) {
-      if (err) return res.status(500).json({ error: '계정 생성 실패' });
-      db.run(`DELETE FROM verifications WHERE id = ?`, [verifyId]);
-      res.json({ success: true });
-    });
+    res.json({ success: true });
   });
 });
 
-// ✅ 로그인
+app.post('/complete-register', async (req, res) => {
+  const { verifyId, username, password, nickname } = req.body;
+
+  db.get(`SELECT * FROM verifications WHERE id = ?`, [verifyId], async (err, row) => {
+    if (!row) return res.status(400).json({ error: '유효하지 않은 인증 정보' });
+
+    const createdTime = new Date(row.createdAt).getTime();
+    if (Date.now() - createdTime > 180000) {
+      db.run(`DELETE FROM verifications WHERE id = ?`, [verifyId]);
+      return res.status(400).json({ error: '인증코드가 만료되었습니다.' });
+    }
+
+    const hash = await bcrypt.hash(password, 10);
+
+    db.run(`INSERT INTO users (username, passwordHash, email, verified)
+            VALUES (?, ?, ?, 1)`,
+      [nickname, hash, username], function(err) {
+        if (err) return res.status(500).json({ error: '계정 생성 실패' });
+
+        db.run(`DELETE FROM verifications WHERE id = ?`, [verifyId]);
+        res.json({ success: true });
+      });
+  });
+});
+
 app.post('/login', (req, res) => {
   const { username, password } = req.body;
   db.get(`SELECT * FROM users WHERE username = ?`, [username], async (err, user) => {
@@ -144,19 +154,16 @@ app.post('/login', (req, res) => {
   });
 });
 
-// ✅ 로그아웃
 app.post('/logout', (req, res) => {
   req.session.destroy(() => res.json({ success: true }));
 });
 
-// ✅ 현재 로그인 사용자 정보
 app.get('/me', (req, res) => {
   if (!req.session.user) return res.status(401).end();
   res.set('Cache-Control', 'no-store');
   res.json(req.session.user);
 });
 
-// ✅ 사용자 목록
 app.get('/users', (req, res) => {
   const currentUser = req.session.user;
   if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'superadmin')) {
@@ -168,7 +175,6 @@ app.get('/users', (req, res) => {
   });
 });
 
-// ✅ 권한 변경 (superadmin만)
 app.put('/users/:id/role', (req, res) => {
   const currentUser = req.session.user;
   if (!currentUser || currentUser.role !== 'superadmin') {
@@ -186,7 +192,6 @@ app.put('/users/:id/role', (req, res) => {
   });
 });
 
-// ✅ 사용자 삭제
 app.delete('/users/:id', (req, res) => {
   const currentUser = req.session.user;
   if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'superadmin')) {
@@ -198,7 +203,6 @@ app.delete('/users/:id', (req, res) => {
   });
 });
 
-// ✅ 아이디어 목록 조회
 app.get('/ideas', (req, res) => {
   if (!req.session.user) return res.status(401).json({ error: '로그인이 필요합니다.' });
   db.all(`
@@ -220,7 +224,6 @@ app.get('/ideas', (req, res) => {
   });
 });
 
-// ✅ 아이디어 저장
 app.post('/ideas', (req, res) => {
   if (!req.session.user) return res.status(401).end();
   const { title, description } = req.body;
@@ -233,7 +236,6 @@ app.post('/ideas', (req, res) => {
     });
 });
 
-// ✅ 아이디어 삭제
 app.delete('/ideas/:id', (req, res) => {
   if (!req.session.user || (req.session.user.role !== 'admin' && req.session.user.role !== 'superadmin')) {
     return res.status(403).end();
@@ -244,6 +246,5 @@ app.delete('/ideas/:id', (req, res) => {
   });
 });
 
-// ✅ 서버 실행
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Server running on http://localhost:${PORT}`));
