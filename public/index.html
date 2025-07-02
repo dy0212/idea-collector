@@ -301,38 +301,49 @@
     }
 
     async function loadIdeas() {
-      try {
-        const res = await fetch(`${API_BASE}/ideas`, { credentials: 'include' });
-        const ideas = await res.json();
-        const list = ideaList;
-        list.innerHTML = '';
-        ideas.reverse().forEach(idea => {
-          const card = document.createElement('div');
-          card.className = 'card';
-          const title = document.createElement('strong');
-          title.textContent = idea.title;
-          const date = document.createElement('small');
-          date.textContent = new Date(idea.date).toLocaleString();
-          const desc = document.createElement('p');
-          desc.textContent = idea.description;
-          card.appendChild(title);
-          card.appendChild(document.createElement('br'));
-          card.appendChild(date);
-          card.appendChild(document.createElement('br'));
-          card.appendChild(desc);
-          if (isAdmin) {
-            const delBtn = document.createElement('span');
-            delBtn.className = 'delete-btn';
-            delBtn.textContent = '🗑️';
-            delBtn.onclick = () => deleteIdea(idea.id);
-            card.appendChild(delBtn);
-          }
-          list.appendChild(card);
-        });
-      } catch (err) {
-        console.error(err);
+  try {
+    const res = await fetch(`${API_BASE}/ideas`, { credentials: 'include' });
+    const ideas = await res.json();
+    const list = ideaList;
+    list.innerHTML = '';
+    ideas.reverse().forEach(idea => {
+      const card = document.createElement('div');
+      card.className = 'card';
+
+      const title = document.createElement('strong');
+      title.textContent = idea.title;
+
+      const author = document.createElement('div');
+      author.innerHTML = `<small>작성자: <b>${idea.user?.username || '알 수 없음'}</b></small>`;
+
+      const date = document.createElement('small');
+      date.textContent = new Date(idea.date).toLocaleString();
+
+      const desc = document.createElement('p');
+      desc.textContent = idea.description;
+
+      card.appendChild(title);
+      card.appendChild(author);  // 작성자 추가
+      card.appendChild(document.createElement('br'));
+      card.appendChild(date);
+      card.appendChild(document.createElement('br'));
+      card.appendChild(desc);
+
+      if (isAdmin) {
+        const delBtn = document.createElement('span');
+        delBtn.className = 'delete-btn';
+        delBtn.textContent = '🗑️';
+        delBtn.onclick = () => deleteIdea(idea.id);
+        card.appendChild(delBtn);
       }
-    }
+
+      list.appendChild(card);
+    });
+  } catch (err) {
+    console.error(err);
+  }
+}
+
 
     async function deleteIdea(id) {
       if (!confirm('정말 삭제하시겠습니까?')) return;
