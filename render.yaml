@@ -9,8 +9,8 @@ services:
       - key: PORT
         value: 10000
       - key: SESSION_SECRET
-        value: your-production-secret
+        value: 0523unji
       - key: CLIENT_ORIGIN
-        value: https://your-frontend-url.com  # 예: https://idea-collector.onrender.com
+        value: https://idea-collector-1-pjy2.onrender.com/  
     plan: free
     autoDeploy: true
