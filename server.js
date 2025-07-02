@@ -9,13 +9,13 @@ const cors = require('cors');
 const app = express();
 const db = new sqlite3.Database('./db.sqlite');
 
-// ✅ CORS 설정 (배포 URL 또는 로컬 개발 주소)
+// ✅ CORS 설정
 app.use(cors({
   origin: process.env.CLIENT_ORIGIN || 'http://localhost:3000',
   credentials: true
 }));
 
-// ✅ 미들웨어 설정
+// ✅ 미들웨어
 app.use(express.json());
 app.use(express.static('public'));
 app.use(session({
@@ -26,7 +26,7 @@ app.use(session({
   cookie: { httpOnly: true }
 }));
 
-// ✅ DB 테이블 초기화
+// ✅ DB 초기화
 db.serialize(() => {
   db.run(`CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -91,7 +91,7 @@ app.get('/me', (req, res) => {
   res.json(req.session.user);
 });
 
-// ✅ 사용자 목록 (admin 이상)
+// ✅ 사용자 목록
 app.get('/users', (req, res) => {
   const currentUser = req.session.user;
   if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'superadmin')) {
@@ -121,7 +121,7 @@ app.put('/users/:id/role', (req, res) => {
   });
 });
 
-// ✅ 사용자 삭제 (admin 이상)
+// ✅ 사용자 삭제
 app.delete('/users/:id', (req, res) => {
   const currentUser = req.session.user;
   if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'superadmin')) {
@@ -133,11 +133,26 @@ app.delete('/users/:id', (req, res) => {
   });
 });
 
-// ✅ 아이디어 목록 조회 (로그인 필요)
+// ✅ 아이디어 목록 조회 (작성자 포함)
 app.get('/ideas', (req, res) => {
   if (!req.session.user) return res.status(401).json({ error: '로그인이 필요합니다.' });
-  db.all(`SELECT ideas.*, users.username FROM ideas LEFT JOIN users ON ideas.userId = users.id`, [], (err, rows) => {
-    res.json(rows);
+  db.all(`
+    SELECT ideas.id, ideas.title, ideas.description, ideas.date, ideas.userId, users.username AS author
+    FROM ideas
+    LEFT JOIN users ON ideas.userId = users.id
+  `, [], (err, rows) => {
+    if (err) return res.status(500).json({ error: 'DB 조회 실패' });
+
+    // 프론트가 기대하는 구조로 변환
+    const ideas = rows.map(idea => ({
+      id: idea.id,
+      title: idea.title,
+      description: idea.description,
+      date: idea.date,
+      userId: idea.userId,
+      user: { username: idea.author }
+    }));
+    res.json(ideas);
   });
 });
 
@@ -154,7 +169,7 @@ app.post('/ideas', (req, res) => {
     });
 });
 
-// ✅ 아이디어 삭제 (admin 이상)
+// ✅ 아이디어 삭제
 app.delete('/ideas/:id', (req, res) => {
   if (!req.session.user || (req.session.user.role !== 'admin' && req.session.user.role !== 'superadmin')) {
     return res.status(403).end();
