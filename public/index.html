@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>아이디어 묘지</title>
-
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Nanum+Gothic&display=swap');
 
@@ -18,23 +17,7 @@
       text-align: center;
     }
 
-    header {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 30px;
-      gap: 15px;
-    }
-
-    header img {
-      height: 60px;
-    }
-
-    h1 {
-      font-size: 2.2rem;
-      font-weight: bold;
-      margin: 0;
-    }
+    h1 { font-size: 2.2rem; font-weight: bold; }
 
     .card {
       background: white;
@@ -43,13 +26,8 @@
       padding: 20px;
       margin-bottom: 15px;
       box-shadow: 0 3px 6px rgba(0,0,0,0.1);
-      transition: transform 0.15s ease-in-out;
       position: relative;
       text-align: left;
-    }
-
-    .card:hover {
-      transform: scale(1.01);
     }
 
     .delete-btn {
@@ -77,21 +55,9 @@
       color: white;
       border: none;
       cursor: pointer;
-      transition: background-color 0.2s ease;
     }
 
-    button:hover {
-      background-color: #375ac2;
-    }
-
-    #loginForm, #registerForm {
-      background: #fff;
-      padding: 25px;
-      border-radius: 10px;
-      box-shadow: 0 1px 5px rgba(0,0,0,0.1);
-      margin-bottom: 30px;
-      text-align: left;
-    }
+    button:hover { background-color: #375ac2; }
 
     #userListModal {
       display: none;
@@ -108,9 +74,7 @@
       border-radius: 12px;
     }
 
-    #userListModal button {
-      margin-left: 10px;
-    }
+    #userListModal button { margin-left: 10px; }
 
     #explanationText {
       background: #fff;
@@ -127,24 +91,36 @@
 
   <div id="authSection">
     <form id="loginForm">
-      <input type="text" id="username" placeholder="아이디" required>
+      <input type="text" id="username" placeholder="이메일" required>
       <input type="password" id="password" placeholder="비밀번호" required>
       <button type="submit">로그인</button>
     </form>
     <button id="logoutBtn" style="display:none;">로그아웃</button>
     <div id="welcomeMsg"></div>
+
     <button id="toggleRegisterBtn">회원가입</button>
+
     <div id="registerSection" style="display:none;">
       <h3>회원가입</h3>
       <form id="registerForm">
-        <input type="text" id="reg_username" placeholder="아이디" required>
+        <input type="text" id="reg_username" placeholder="이메일 주소" required>
         <input type="password" id="reg_password" placeholder="비밀번호" required>
+        <label>
+          <input type="checkbox" id="reg_agree" required>
+          개인정보 수집 및 이용에 동의합니다.
+        </label>
         <button type="submit">회원가입</button>
       </form>
     </div>
+
+    <div id="verificationSection" style="display:none;">
+      <h3>이메일 인증</h3>
+      <input type="text" id="verify_code" placeholder="이메일로 받은 인증코드" required>
+      <button id="verifyBtn">인증 완료</button>
+    </div>
   </div>
 
-  <div id="adminControls" style="display:none; margin: 10px 0;">
+  <div id="adminControls" style="display:none; margin-top: 10px;">
     <button onclick="showUserList()">사용자 목록 보기</button>
   </div>
 
@@ -154,25 +130,25 @@
     <button onclick="closeUserList()">X 닫기</button>
   </div>
 
-  <div id="explanationContainer" style="display:none; margin-bottom: 20px;">
+  <div id="explanationContainer" style="display:none;">
     <button onclick="toggleExplanation()">🧐 설명 보기</button>
     <div id="explanationText" style="display:none;">
       <p><strong>이 웹사이트는?</strong><br>
-      떠오른 아이디어를 저장했다가, 나중에 보면 "왜 이걸 썼지?" 싶은 아이디어들을 모아두는 <em>아이디어의 묘지</em>입니다.</p>
+        떠오른 아이디어를 저장했다가, 나중에 보면 "왜 이걸 썼지?" 싶은 아이디어들을 모아두는 <em>아이디어의 묘지</em>입니다.</p>
       <p><strong>사용법</strong><br>
-      - 로그인 후 아이디어를 저장<br>
-      - 저장된 아이디어는 '저장된 아이디어 보기' 버튼으로 확인<br>
-      - 관리자(superadmin)는 사용자 관리도 가능</p>
+        - 로그인 후 아이디어를 저장<br>
+        - 저장된 아이디어는 '저장된 아이디어 보기' 버튼으로 확인<br>
+        - 관리자(superadmin)는 사용자 관리도 가능</p>
     </div>
   </div>
 
   <div id="inputSection" style="display:none;">
     <input type="text" id="title" placeholder="제목" maxlength="100"><br><br>
-    <textarea id="description" placeholder="내용 (왜 버렸는지, 언제 등)" maxlength="500"></textarea><br><br>
+    <textarea id="description" placeholder="내용" maxlength="500"></textarea><br><br>
     <button id="saveBtn">저장하기</button>
   </div>
 
-  <div id="viewIdeasBtnContainer" style="display:none; margin-top: 10px;">
+  <div id="viewIdeasBtnContainer" style="display:none;">
     <button onclick="showIdeaPage()">📂 저장된 아이디어 보기</button>
   </div>
 
@@ -184,6 +160,7 @@
 
   <script>
     const API_BASE = window.location.origin;
+    let tempRegister = {};
     let isAdmin = false;
     let isSuperAdmin = false;
     let currentUserId = null;
@@ -195,8 +172,8 @@
 
     document.getElementById('loginForm').addEventListener('submit', async e => {
       e.preventDefault();
-      const username = document.getElementById('username').value;
-      const password = document.getElementById('password').value;
+      const username = username.value;
+      const password = password.value;
 
       try {
         const res = await fetch(`${API_BASE}/login`, {
@@ -219,30 +196,55 @@
 
     document.getElementById('registerForm').addEventListener('submit', async e => {
       e.preventDefault();
-      const username = document.getElementById('reg_username').value;
-      const password = document.getElementById('reg_password').value;
+      const username = reg_username.value;
+      const password = reg_password.value;
+      const agree = reg_agree.checked;
+
       try {
         const res = await fetch(`${API_BASE}/register`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ username, password })
+          body: JSON.stringify({ username, password, agree })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || '회원가입 실패');
-        alert('회원가입 성공! 이제 로그인하세요.');
-        document.getElementById('registerSection').style.display = 'none';
+
+        tempRegister = { verifyId: data.verifyId, username, password };
+        registerSection.style.display = 'none';
+        verificationSection.style.display = 'block';
+        alert('이메일로 인증코드를 보냈습니다.');
+      } catch (err) {
+        alert(err.message);
+      }
+    });
+
+    document.getElementById('verifyBtn').addEventListener('click', async () => {
+      const code = verify_code.value;
+      try {
+        const res = await fetch(`${API_BASE}/verify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            verifyId: tempRegister.verifyId,
+            code,
+            username: tempRegister.username,
+            password: tempRegister.password
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || '인증 실패');
+        alert('이메일 인증 완료! 로그인 해주세요.');
+        location.reload();
       } catch (err) {
         alert(err.message);
       }
     });
 
     document.getElementById('saveBtn').addEventListener('click', async () => {
-      const titleInput = document.getElementById('title');
-      const descriptionInput = document.getElementById('description');
-      const title = titleInput.value.trim();
-      const description = descriptionInput.value.trim();
-
+      const title = title.value.trim();
+      const description = description.value.trim();
       if (!title) return alert('제목을 입력하세요.');
       try {
         await fetch(`${API_BASE}/ideas`, {
@@ -251,8 +253,8 @@
           credentials: 'include',
           body: JSON.stringify({ title, description })
         });
-        titleInput.value = '';
-        descriptionInput.value = '';
+        title.value = '';
+        description.value = '';
         loadIdeas();
       } catch (err) {
         console.error(err);
@@ -275,9 +277,9 @@
         logoutBtn.style.display = 'inline';
         inputSection.style.display = 'block';
         viewIdeasBtnContainer.style.display = 'block';
-        document.getElementById('registerSection').style.display = 'none';
-        document.getElementById('toggleRegisterBtn').style.display = 'none';
-        document.getElementById('explanationContainer').style.display = 'block';
+        registerSection.style.display = 'none';
+        toggleRegisterBtn.style.display = 'none';
+        explanationContainer.style.display = 'block';
 
         isAdmin = data.role === 'admin' || data.role === 'superadmin';
         isSuperAdmin = data.role === 'superadmin';
@@ -301,49 +303,32 @@
     }
 
     async function loadIdeas() {
-  try {
-    const res = await fetch(`${API_BASE}/ideas`, { credentials: 'include' });
-    const ideas = await res.json();
-    const list = ideaList;
-    list.innerHTML = '';
-    ideas.reverse().forEach(idea => {
-      const card = document.createElement('div');
-      card.className = 'card';
+      try {
+        const res = await fetch(`${API_BASE}/ideas`, { credentials: 'include' });
+        const ideas = await res.json();
+        ideaList.innerHTML = '';
+        ideas.reverse().forEach(idea => {
+          const card = document.createElement('div');
+          card.className = 'card';
+          card.innerHTML = `<strong>${idea.title}</strong><br>
+                            <small>${new Date(idea.date).toLocaleString()}</small><br>
+                            <div>${idea.description}</div>
+                            <small>작성자: ${idea.user?.username || '알 수 없음'}</small>`;
 
-      const title = document.createElement('strong');
-      title.textContent = idea.title;
+          if (isAdmin) {
+            const delBtn = document.createElement('span');
+            delBtn.className = 'delete-btn';
+            delBtn.textContent = '🗑️';
+            delBtn.onclick = () => deleteIdea(idea.id);
+            card.appendChild(delBtn);
+          }
 
-      const author = document.createElement('div');
-      author.innerHTML = `<small>작성자: <b>${idea.user?.username || '알 수 없음'}</b></small>`;
-
-      const date = document.createElement('small');
-      date.textContent = new Date(idea.date).toLocaleString();
-
-      const desc = document.createElement('p');
-      desc.textContent = idea.description;
-
-      card.appendChild(title);
-      card.appendChild(author);  // 작성자 추가
-      card.appendChild(document.createElement('br'));
-      card.appendChild(date);
-      card.appendChild(document.createElement('br'));
-      card.appendChild(desc);
-
-      if (isAdmin) {
-        const delBtn = document.createElement('span');
-        delBtn.className = 'delete-btn';
-        delBtn.textContent = '🗑️';
-        delBtn.onclick = () => deleteIdea(idea.id);
-        card.appendChild(delBtn);
+          ideaList.appendChild(card);
+        });
+      } catch (err) {
+        console.error(err);
       }
-
-      list.appendChild(card);
-    });
-  } catch (err) {
-    console.error(err);
-  }
-}
-
+    }
 
     async function deleteIdea(id) {
       if (!confirm('정말 삭제하시겠습니까?')) return;
@@ -357,8 +342,7 @@
     async function showUserList() {
       const res = await fetch(`${API_BASE}/users`, { credentials: 'include' });
       const users = await res.json();
-      const list = userList;
-      list.innerHTML = '';
+      userList.innerHTML = '';
       users.forEach(user => {
         const li = document.createElement('li');
         li.textContent = `${user.username} (${user.role})`;
@@ -377,7 +361,7 @@
           li.appendChild(del);
         }
 
-        list.appendChild(li);
+        userList.appendChild(li);
       });
       userListModal.style.display = 'block';
     }
@@ -403,7 +387,7 @@
       showUserList();
     }
 
-    fetchMe();
+    fetchMe(); // 자동 로그인 시도
   </script>
 </body>
 </html>

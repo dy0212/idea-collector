@@ -1,23 +1,21 @@
-require('dotenv').config();  // .env 지원
+require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const SQLiteStore = require('connect-sqlite3')(session);
 const bcrypt = require('bcrypt');
 const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
+const nodemailer = require('nodemailer');
+const { v4: uuidv4 } = require('uuid');
 
 const app = express();
 const db = new sqlite3.Database('./db.sqlite');
 
-// ✅ CORS 설정
 app.use(cors({
   origin: process.env.CLIENT_ORIGIN || 'http://localhost:3000',
   credentials: true
 }));
-
-// ✅ 미들웨어
 app.use(express.json());
-app.use(express.static('public'));
 app.use(session({
   store: new SQLiteStore({ db: 'sessions.sqlite' }),
   secret: process.env.SESSION_SECRET || 'default_secret',
@@ -26,12 +24,23 @@ app.use(session({
   cookie: { httpOnly: true }
 }));
 
+// ✅ 이메일 전송 설정 (gmail 기준)
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.MAIL_USER,
+    pass: process.env.MAIL_PASS
+  }
+});
+
 // ✅ DB 초기화
 db.serialize(() => {
   db.run(`CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE,
     passwordHash TEXT,
+    email TEXT UNIQUE,
+    verified INTEGER DEFAULT 0,
     role TEXT DEFAULT 'user'
   )`);
 
@@ -44,24 +53,65 @@ db.serialize(() => {
     FOREIGN KEY(userId) REFERENCES users(id)
   )`);
 
-  // superadmin 초기 계정 생성
-  db.get(`SELECT * FROM users WHERE username = 'siasia212'`, (err, row) => {
+  db.run(`CREATE TABLE IF NOT EXISTS verifications (
+    id TEXT PRIMARY KEY,
+    email TEXT,
+    code TEXT
+  )`);
+
+  // ✅ 초기 superadmin 계정 (이메일 인증 제외)
+  db.get(`SELECT * FROM users WHERE username = 'siasia212@gmail.com'`, (err, row) => {
     if (!row) {
       bcrypt.hash('ehdduf0625!@#', 10, (err, hash) => {
-        db.run(`INSERT INTO users (username, passwordHash, role) VALUES (?, ?, 'superadmin')`, ['siasia212', hash]);
+        db.run(`INSERT INTO users (username, passwordHash, email, verified, role)
+                VALUES (?, ?, ?, 1, 'superadmin')`,
+                ['siasia212@gmail.com', hash, 'siasia212@gmail.com']);
       });
     }
   });
 });
 
-// ✅ 회원가입
+// ✅ 회원가입 (개인정보 동의 + 이메일 인증)
 app.post('/register', async (req, res) => {
-  const { username, password } = req.body;
+  const { username, password, agree } = req.body;
+  const email = username;
+
+  if (!agree) return res.status(400).json({ error: '개인정보 수집에 동의해야 합니다.' });
+
   db.get(`SELECT * FROM users WHERE username = ?`, [username], async (err, row) => {
     if (row) return res.status(400).json({ error: '이미 존재하는 사용자입니다.' });
     const hash = await bcrypt.hash(password, 10);
-    db.run(`INSERT INTO users (username, passwordHash) VALUES (?, ?)`, [username, hash], function(err) {
-      if (err) return res.status(500).json({ error: '회원가입 실패' });
+    const code = uuidv4().slice(0, 6).toUpperCase();
+
+    // 이메일 인증코드 저장
+    const id = uuidv4();
+    db.run(`INSERT INTO verifications (id, email, code) VALUES (?, ?, ?)`, [id, email, code]);
+
+    // 메일 전송
+    await transporter.sendMail({
+      from: process.env.MAIL_USER,
+      to: email,
+      subject: '[아이디어 묘지] 이메일 인증코드',
+      text: `인증코드는 다음과 같습니다: ${code}`
+    });
+
+    res.json({ verifyId: id, message: '인증 메일이 전송되었습니다.' });
+  });
+});
+
+// ✅ 인증 코드 확인 후 회원 생성
+app.post('/verify', async (req, res) => {
+  const { verifyId, code, username, password } = req.body;
+
+  db.get(`SELECT * FROM verifications WHERE id = ? AND code = ?`, [verifyId, code], async (err, row) => {
+    if (!row) return res.status(400).json({ error: '인증 실패' });
+
+    const hash = await bcrypt.hash(password, 10);
+    db.run(`INSERT INTO users (username, passwordHash, email, verified)
+            VALUES (?, ?, ?, 1)`, [username, hash, username], function(err) {
+      if (err) return res.status(500).json({ error: '계정 생성 실패' });
+
+      db.run(`DELETE FROM verifications WHERE id = ?`, [verifyId]);
       res.json({ success: true });
     });
   });
@@ -74,6 +124,8 @@ app.post('/login', (req, res) => {
     if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
       return res.status(401).json({ error: '로그인 실패' });
     }
+    if (!user.verified) return res.status(403).json({ error: '이메일 인증이 필요합니다.' });
+
     req.session.user = { id: user.id, username: user.username, role: user.role };
     res.json({ success: true });
   });

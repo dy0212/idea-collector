@@ -23,13 +23,16 @@
 
       try {
         const res = await fetch(`${API_BASE}/ideas`, { credentials: 'include' });
-        if (!res.ok) {
+
+        if (res.status === 401 || res.status === 403) {
           const msg = document.createElement('p');
           msg.className = 'error';
           msg.textContent = '⚠️ 로그인이 필요합니다.';
           listEl.appendChild(msg);
           return;
         }
+
+        if (!res.ok) throw new Error('서버 응답 오류');
 
         const ideas = await res.json();
         ideas.reverse().forEach(idea => {
@@ -42,17 +45,15 @@
           const author = document.createElement('div');
           author.innerHTML = `<small>작성자: <b>${idea.user?.username || '알 수 없음'}</b></small>`;
 
-          card.appendChild(title);
-          card.appendChild(author);
-
           const dateEl = document.createElement('small');
-          dateEl.textContent = new Date(idea.date).toLocaleString();
+          dateEl.textContent = new Date(idea.date).toLocaleString('ko-KR');
 
           const descEl = document.createElement('p');
           descEl.textContent = idea.description;
 
           card.appendChild(titleEl);
           card.appendChild(document.createElement('br'));
+          card.appendChild(author);
           card.appendChild(dateEl);
           card.appendChild(document.createElement('br'));
           card.appendChild(descEl);
