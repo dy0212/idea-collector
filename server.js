@@ -10,6 +10,10 @@ const { v4: uuidv4 } = require('uuid');
 
 const app = express();
 const db = new sqlite3.Database('./db.sqlite');
+const path = require('path');
+
+// ✅ 정적 파일 서빙 설정
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.use(cors({
   origin: process.env.CLIENT_ORIGIN || 'http://localhost:3000',
