@@ -384,7 +384,7 @@ async function submitComment(ideaId) {
         card.className = 'card';
         card.innerHTML = `<strong>${idea.title}</strong><br>
                           <small>${new Date(idea.date).toLocaleString()}</small><br>
-                          <div>${idea.description}</div>
+                          <div>${idea.description.replace(/\n/g, '<br>')}</div>
                           <small>작성자: ${idea.user?.username || '알 수 없음'}</small>`;
         card.innerHTML += `
   <div class="comments" id="comments-${idea.id}"></div>
